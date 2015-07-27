@@ -8,4 +8,4 @@ Flax is a full blown framework that includes a set of concepts and their impleme
 * cluster aware event bus 
 * webserver wrapper library
 
-![Alt text](/displayio/flax/blob/master/docs/cluster.png?raw=true)
+![cluster overview](/docs/cluster.png?raw=true)
