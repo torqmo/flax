@@ -1,11 +1,13 @@
 # flax
-Flax ecma6 nodejs framework - developed at display.io to feature the display.io advertising technology, is minimalistic end to end framework for accelerated development of both web frontend and heavy load serving
+Flax is an ECMA6 iojs/nodejs framework - 
 
 
-Flax is a full blown framework that includes a set of concepts and their implementation 
+Flax, like some other framworks, takes the architectural enforcement approach rather than the modular approach. It contains the following elements / subsystems:
 * entity abstraction layer 
-* a minimal ORM with vendor plugins and implementations 
-* cluster aware event bus 
-* webserver wrapper library
+* a minimal ORM with unified interface to different databases
+* event bus for cluster synchronization and consistency
+* http server wrapper
+* implementations of client webservices and UI elements 
+
 
 ![cluster overview](/docs/cluster.png?raw=true)
