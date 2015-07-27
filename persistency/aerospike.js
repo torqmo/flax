@@ -2,8 +2,9 @@
 
 var aerospike = require('aerospike');
 var persistency = require('flax/persistency');
+var tools = require('flax/tools');
 
-class EntityController {
+class EntityPersistLayer extends tools.StatefulEventEmitter {
 
 	constructor(storeConf , controllerConf) {
 		this.client = aerospike.client(storeConf);
@@ -83,4 +84,4 @@ class EntityController {
 		return query;
 	}
 }
-exports.EntityController = EntityController;
+exports.EntityPersistLayer = EntityPersistLayer;
