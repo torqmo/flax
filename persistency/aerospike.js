@@ -2,9 +2,9 @@
 
 var aerospike = require('aerospike');
 var persistency = require('flax/persistency');
-var tools = require('flax/tools');
+var core = require('flax/core');
 
-class EntityPersistLayer extends tools.StatefulEventEmitter {
+class EntityPersistLayer extends core.StatefulEventEmitter {
 
 	constructor(storeConf , controllerConf) {
 		this.client = aerospike.client(storeConf);

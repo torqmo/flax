@@ -1,10 +1,21 @@
 "use strict";
-var events = require("events");
+var core = require("flax/core");
 
 class Server extends events.EventEmitter  {
 	constructor() {
 		super();
-		this.routes = {};
+		this.domainRoutes = {};
+		this.globalRoutes = {matchRoutes: {}, exactRoutes: {}};
+		this.addExactRoute({
+			route: '/showRoutes',
+			fn : function(req, res) {
+				res.textOut('<pre>' + JSON.stringify({domainRoutes : this.domainRoutes, global : this.globalRoutes}, null,4) + '</pre>');
+			}
+		});
+	}
+	setupClient(domain, route) {
+		route = route || '/client';
+		this.mapDirectory(core.path + '/client', route, domain);
 	}
 
 	/**
@@ -12,48 +23,72 @@ class Server extends events.EventEmitter  {
 	 * @param conf - requires properties : route, domain , fn
 	 */
 	addMatchRoute(conf) {
-		if (!this.routes.hasOwnProperty(conf.domain)) {
-			this.routes[conf.domain] = {routes: {}};
+		conf.type =conf.type || 'function';
+		if(conf.hasOwnProperty('domain')) {
+			var routes = this._getDomainRoutes(conf.domain);
+
+		} else {
+			var routes = this.globalRoutes;
 		}
-		conf.type = 'function';
-		conf.context = conf.context || this;
-		this.routes[conf.domain].matchRoutes[conf.route] = conf;
+		routes.matchRoutes[conf.route] = conf;
 	}
 	/**
 	 *
 	 * @param conf - requires properties : route, domain , fn
 	 */
 	addExactRoute(conf) {
-		if (!this.routes.hasOwnProperty(conf.domain)) {
-			this.routes[conf.domain] = {exactRoutes: {},matchRoutes:{}};
+		conf.type =conf.type || 'function';
+		if(conf.hasOwnProperty('domain')) {
+			var routes = this._getDomainRoutes(conf.domain);
+
+		} else {
+			var routes = this.globalRoutes;
 		}
-		conf.context = conf.context || this;
-		this.routes[conf.domain].exactRoutes[conf.route] = conf;
+		routes.exactRoutes[conf.route] = conf;
 	}
 	/**
 	 *
-	 * @param conf - requires properties : route, domain , path
+	 * @param conf - requires properties : route, domain , fn
 	 */
-	mapRouteDir(conf) {
-		if (!this.routes.hasOwnProperty(conf.domain)) {
-			this.routes[conf.domain] = {exactRoutes: {},matchRoutes:{}};
+	addDefaultRoute(conf) {
+		if(conf.hasOwnProperty('domain')) {
+			var routes = this._getDomainRoutes(conf.domain);
+
+		} else {
+			var routes = this.globalRoutes;
 		}
-		conf.type = 'directory';
-		this.routes[conf.domain].matchRoutes[conf.route] = conf;
+		routes.default = conf.fn;
 	}
-	setDomainDefaultRoute(conf) {
-		if (!this.routes.hasOwnProperty(conf.domain)) {
-			this.routes[conf.domain] = {exactRoutes: {},matchRoutes:{}};
+	mapDirectory(path, route, domain) {
+		var conf = {path : path, route: route, type: 'path' };
+		if(domain) {
+			conf.domain = domain;
 		}
-		conf.context = conf.context || this;
-
-		this.routes[conf.domain].defaultRoute = conf;
-
+		this.addMatchRoute(conf);
+	}
+	mapFile(path, route, domain) {
+		var conf = {path : path, route: route, type: 'path' };
+		if(domain) {
+			conf.domain = domain;
+		}
+		this.addExactRoute(conf);
+	}
+	/**
+	 * initializes if not initialized already and returns
+	 * @param domain
+	 * @returns object
+	 * @private
+	 */
+	_getDomainRoutes(domain) {
+		if (!this.domainRoutes.hasOwnProperty(domain)) {
+			this.domainRoutes[domain] = {matchRoutes: {}, exactRoutes: {}};
+		}
+		return this.domainRoutes[domain];
 	}
 
-	defaultRoute(req, res) {
-		res.textOut('resource not found', 404);
-	}
+
+
+
 
 	initServer() {
 		var srvContrainer = this;
@@ -62,52 +97,73 @@ class Server extends events.EventEmitter  {
 			var respWrapper = new ResponseWrapper(res);
 			var reqWrapper = new RequestWrapper(req);
 			var domain = reqWrapper.getDomain();
-			if (srvContrainer.routes.hasOwnProperty(domain)) {
-				var exactRoutes = srvContrainer.routes[domain].exactRoutes;
-				var matchRoutes = srvContrainer.routes[domain].matchRoutes;
-				var path = reqWrapper.getPath();
-				if(exactRoutes.hasOwnProperty(path)) {
-					switch(exactRoutes[path].type) {
-						case 'function':
-							return exactRoutes[path].fn.apply(exactRoutes[path].context, [reqWrapper, respWrapper]);
-							break;
-					}
-				}
-				for (var route in matchRoutes) {
-					var reg = '^' + route;
-
-					if (path.match(new RegExp(reg))) {
-						switch(matchRoutes[route].type) {
-							case 'function':
-								return matchRoutes[route].fn.apply(matchRoutes[route].context, [reqWrapper, respWrapper]);
-								break;
-							case 'directory':
-								var filepath = matchRoutes[route].path + reqWrapper.parsedQuery.href.substr(route.length);
-								console.log(reqWrapper.parsedQuery.href);
-								require('fs').readFile(filepath, {}, function (err, content) {
-									if(!err) {
-										console.log()
-										respWrapper.textOut(content, 200, reqWrapper.getMime());
-									} else {
-										respWrapper.textOut('resource not found', 404);
-									}
-								});
-								return;
-								break;
-							default:
-								throw "unknown route type: " +routes[route].type;
-						}
-					}
-				}
-				if (srvContrainer.routes[domain].hasOwnProperty('defaultRoute')) {
-					return srvContrainer.routes[domain].defaultRoute.apply(srvContrainer, [reqWrapper, respWrapper]);
+			if (srvContrainer.domainRoutes.hasOwnProperty(domain)) {
+				if(false !== srvContrainer._handleRoutes(srvContrainer.domainRoutes[domain], reqWrapper, respWrapper)) {
+					return;
 				}
 			}
-			srvContrainer.defaultRoute.apply(srvContrainer, [reqWrapper, respWrapper]);
-
+			if(false !== srvContrainer._handleRoutes(srvContrainer.globalRoutes, reqWrapper, respWrapper)) {
+				return;
+			}
 		});
 	}
+	_handleRoutes(routes, req, res) {
+		var path = req.getPath();
+		if(routes.exactRoutes.hasOwnProperty(path)) {
+			var routeConf = routes.exactRoutes[path];
+			var context = routeConf.context || this;
+			switch(routeConf.type) {
+				case 'function':
+					routeConf.fn.apply(context, [req, res]);
+					break;
+				case 'path':
+					var filepath = routeConf.path;
+					require('fs').readFile(filepath, {}, function (err, content) {
+						if(!err) {
+							res.textOut(content, 200, req.getMime());
+						} else {
+							res.textOut('resource not found', 404);
+						}
+					});
+					break;
+				default:
+					throw "unknown route type: " +routeConf.type;
+			}
+			return true;
+		}
+		for (var route in routes.matchRoutes) {
+			var reg = '^' + route;
 
+			if (path.match(new RegExp(reg))) {
+				var routeConf = routes.matchRoutes[route];
+				var context = routeConf.context || this;
+				switch(routes.matchRoutes[route].type) {
+					case 'function':
+						routeConf.fn.apply(context, [req, res]);
+						break;
+					case 'path':
+						var filepath = routeConf.path + req.parsedQuery.href.substr(route.length);
+						require('fs').readFile(filepath, {}, function (err, content) {
+							if(!err) {
+								res.textOut(content, 200, req.getMime());
+							} else {
+								res.textOut('resource not found', 404);
+							}
+						});
+
+						break;
+					default:
+						throw "unknown route type: " +routeConf.type;
+				}
+				return true;
+			}
+		}
+		if (routes.hasOwnProperty('default')) {
+			routes.default.apply(this, [req, res]);
+			return true;
+		}
+		return false;
+	}
 	listen(port) {
 		this.server.listen(port);
 	}

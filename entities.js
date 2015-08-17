@@ -1,8 +1,8 @@
 "use strict";
-var tools = require('flax/tools');
+var core = require('flax/core');
 
 
-class EntityController extends tools.StatefulEventEmitter {
+class EntityController extends core.StatefulEventEmitter {
 	constructor(name, pLayer, entityClass) {
 		super();
 		this.pLayer = pLayer;
@@ -89,7 +89,7 @@ class EntityController extends tools.StatefulEventEmitter {
  */
 
 
-class Entity extends tools.StatefulEventEmitter {
+class Entity extends core.StatefulEventEmitter {
 	constructor(id) {
 		super();
 		this.data = {};

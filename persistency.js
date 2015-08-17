@@ -1,6 +1,6 @@
 "use strict";
 
-var tools = require('flax/tools');
+var core = require('flax/core');
 
 
 /**
@@ -42,7 +42,7 @@ interface EntityPersistLayer {
 /**
  * Emits : recordIn, recordIn , failed
  */
-class Query extends tools.StatefulEventEmitter {
+class Query extends core.StatefulEventEmitter {
 	feedRecord(record) {
 		this.emit('recordIn', record)
 	}
@@ -90,7 +90,7 @@ class Factory {
 		this.cache = {};
 		this.config = new PersistConfig();
 	}
-	getByController(ctrlName) {
+	get(ctrlName) {
 		if(this.cache.hasOwnProperty(ctrlName)) {
 			return this.cache[ctrlName];
 		}

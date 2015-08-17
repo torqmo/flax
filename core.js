@@ -32,3 +32,4 @@ class StatefulEventEmitter extends events.EventEmitter {
 }
 
 exports.StatefulEventEmitter = StatefulEventEmitter;
+exports.path = __dirname;

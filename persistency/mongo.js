@@ -1,10 +1,10 @@
 "use strict";
 
 var mongodb = require('mongodb');
-var tools = require('flax/tools');
+var core = require('flax/core');
 var persistency = require('flax/persistency');
 
-class EntityPersistLayer extends tools.StatefulEventEmitter {
+class EntityPersistLayer extends core.StatefulEventEmitter {
 	/**
 	 * storeConf
 	 * =========
@@ -39,9 +39,10 @@ class EntityPersistLayer extends tools.StatefulEventEmitter {
 				break;
 		}
 		this.db = new mongodb.Db(controllerConf.db, cluster);
+
 		this.db.open(function(err, db) {
 			// Perform a read
-			self.collection = db.collection(controllerConf.collection);
+			self.collection = self.db.collection(controllerConf.collection);
 			self.emit('ready');
 		});
 
